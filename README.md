@@ -1,6 +1,6 @@
 # rainbow-road
 
-RoyalRoad chapter scraping tool, made for archiving whole fictions. Outputs scraped data in .tar.br(otli) files.
+RoyalRoad chapter scraping tool, made for archiving whole fictions. Outputs scraped data in .tar.gz files by default.
 
 # Usage
 
