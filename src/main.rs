@@ -19,12 +19,14 @@ use tracing_subscriber::fmt;
 #[derive(Parser)]
 struct Args {
     #[arg(short, long)]
+    /// The initial chapter to start the scraping from. Specify multiple (-i url -i url) to scrape multiple fictions.
     initial_chapter: Vec<String>,
     #[arg(
         short,
         long,
         default_value = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/122.0.2365.106"
     )]
+    /// The user agent to use when making requests to RoyalRoad
     user_agent: String,
 }
 
