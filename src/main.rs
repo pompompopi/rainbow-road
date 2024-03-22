@@ -16,16 +16,16 @@ use tokio_tar::{Builder, Header};
 use tracing::info;
 use tracing_subscriber::fmt;
 
-#[derive(Debug, Parser)]
+#[derive(Parser)]
 struct Args {
     #[arg(short, long)]
-    pub initial_chapter: Vec<String>,
+    initial_chapter: Vec<String>,
     #[arg(
         short,
         long,
         default_value = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 Edg/122.0.2365.106"
     )]
-    pub user_agent: String,
+    user_agent: String,
 }
 
 async fn parse_chapters(
