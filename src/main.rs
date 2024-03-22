@@ -1,20 +1,75 @@
-use std::sync::Arc;
+use std::{pin::Pin, str::FromStr, sync::Arc};
 
 use anyhow::{bail, Result};
-use async_compression::tokio::write::BrotliEncoder;
+use async_compression::tokio::write::{
+    BzEncoder, GzipEncoder, LzmaEncoder, XzEncoder, ZstdEncoder,
+};
 use clap::Parser;
 use regex::Regex;
 use reqwest::{Client, Url};
 use scraper::{Html, Selector};
 use tokio::{
     fs::File,
-    io::{AsyncWriteExt, BufWriter},
+    io::{AsyncWrite, AsyncWriteExt, BufWriter},
     join, spawn,
     sync::broadcast::{self, error::RecvError, Sender},
 };
 use tokio_tar::{Builder, Header};
 use tracing::info;
 use tracing_subscriber::fmt;
+
+#[derive(Clone, Copy)]
+enum TarCompression {
+    None,
+    Bzip,
+    Xz,
+    Lzma,
+    Zstd,
+    Gzip,
+}
+
+impl FromStr for TarCompression {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "none" => Ok(Self::None),
+            "bzip2" => Ok(Self::Bzip),
+            "xz" => Ok(Self::Xz),
+            "lzma" => Ok(Self::Lzma),
+            "zstd" => Ok(Self::Zstd),
+            "gzip" => Ok(Self::Gzip),
+            _ => bail!("unknown compression algo {s}"),
+        }
+    }
+}
+
+impl TarCompression {
+    pub const fn ext(&self) -> &str {
+        match self {
+            TarCompression::None => ".tar",
+            TarCompression::Bzip => ".tar.bz2",
+            TarCompression::Xz => ".tar.xz",
+            TarCompression::Lzma => ".tar.lzma",
+            TarCompression::Zstd => ".tar.zst",
+            TarCompression::Gzip => ".tar.gz",
+        }
+    }
+
+    pub fn wrap<'a, W: AsyncWrite + Unpin + Send>(
+        &self,
+        writer: &'a mut W,
+    ) -> Pin<Box<dyn AsyncWrite + Send + 'a>> {
+        match self {
+            TarCompression::None => Box::pin(writer),
+            TarCompression::Bzip => Box::pin(BzEncoder::new(writer)),
+            TarCompression::Xz => Box::pin(XzEncoder::new(writer)),
+            TarCompression::Lzma => Box::pin(LzmaEncoder::new(writer)),
+            TarCompression::Zstd => Box::pin(ZstdEncoder::new(writer)),
+            TarCompression::Gzip => Box::pin(GzipEncoder::new(writer)),
+        }
+    }
+}
 
 #[derive(Parser)]
 struct Args {
@@ -28,6 +83,9 @@ struct Args {
     )]
     /// The user agent to use when making requests to RoyalRoad
     user_agent: String,
+    #[arg(short, long, default_value = "gzip")]
+    /// The compression algorithm to compress the tarfile with (none, bzip2, xz, lzma, zstd, gzip)
+    compression: TarCompression,
 }
 
 async fn parse_chapters(
@@ -97,6 +155,8 @@ async fn main() -> Result<()> {
     let paragraph_selector =
         Arc::new(Selector::parse("div.chapter-inner.chapter-content > p").unwrap());
     let chapter_button_selector = Arc::new(Selector::parse("a.btn.btn-primary.col-xs-12").unwrap());
+    let compression = args.compression;
+    let ext = compression.ext();
 
     for initial_chapter in args.initial_chapter {
         let (sender, mut receiver) = broadcast::channel(10000);
@@ -120,10 +180,10 @@ async fn main() -> Result<()> {
                 sender
             ),
             async move {
-                let mut file = File::create(format!("{base_name}.tar.br")).await?;
+                let mut file = File::create(format!("{base_name}{ext}")).await?;
                 let mut buf_writer = BufWriter::new(&mut file);
                 let mut archive_builder =
-                    Builder::new_non_terminated(BrotliEncoder::new(&mut buf_writer));
+                    Builder::new_non_terminated(compression.wrap(&mut buf_writer));
 
                 loop {
                     let (name, bytes): (String, Vec<u8>) = match receiver.recv().await {

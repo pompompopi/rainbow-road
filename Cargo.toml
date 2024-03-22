@@ -11,7 +11,7 @@ tokio = { version = "1.36", features = ["rt-multi-thread", "macros", "fs", "sync
 reqwest = { version = "0.12" }
 scraper = "0.19"
 tokio-tar = "0.3.1"
-async-compression = { version = "0.4", features = ["tokio", "brotli"]}
+async-compression = { version = "0.4", features = ["tokio", "bzip2", "xz", "lzma", "zstd", "gzip"]}
 regex = "1.10"
 clap = { version = "4.5", features = ["derive"] }
 
