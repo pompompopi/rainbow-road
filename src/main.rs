@@ -1,9 +1,7 @@
 use std::{pin::Pin, str::FromStr, sync::Arc};
 
 use anyhow::{bail, Result};
-use async_compression::tokio::write::{
-    BzEncoder, GzipEncoder, LzmaEncoder, XzEncoder, ZstdEncoder,
-};
+use async_compression::tokio::write::{BzEncoder, GzipEncoder, ZstdEncoder};
 use clap::Parser;
 use regex::Regex;
 use reqwest::{Client, Url};
@@ -22,8 +20,6 @@ use tracing_subscriber::fmt;
 enum TarCompression {
     None,
     Bzip,
-    Xz,
-    Lzma,
     Zstd,
     Gzip,
 }
@@ -35,8 +31,6 @@ impl FromStr for TarCompression {
         match s {
             "none" => Ok(Self::None),
             "bzip2" => Ok(Self::Bzip),
-            "xz" => Ok(Self::Xz),
-            "lzma" => Ok(Self::Lzma),
             "zstd" => Ok(Self::Zstd),
             "gzip" => Ok(Self::Gzip),
             _ => bail!("unknown compression algo {s}"),
@@ -49,8 +43,6 @@ impl TarCompression {
         match self {
             TarCompression::None => ".tar",
             TarCompression::Bzip => ".tar.bz2",
-            TarCompression::Xz => ".tar.xz",
-            TarCompression::Lzma => ".tar.lzma",
             TarCompression::Zstd => ".tar.zst",
             TarCompression::Gzip => ".tar.gz",
         }
@@ -63,8 +55,6 @@ impl TarCompression {
         match self {
             TarCompression::None => Box::pin(writer),
             TarCompression::Bzip => Box::pin(BzEncoder::new(writer)),
-            TarCompression::Xz => Box::pin(XzEncoder::new(writer)),
-            TarCompression::Lzma => Box::pin(LzmaEncoder::new(writer)),
             TarCompression::Zstd => Box::pin(ZstdEncoder::new(writer)),
             TarCompression::Gzip => Box::pin(GzipEncoder::new(writer)),
         }
@@ -84,7 +74,7 @@ struct Args {
     /// The user agent to use when making requests to RoyalRoad
     user_agent: String,
     #[arg(short, long, default_value = "gzip")]
-    /// The compression algorithm to compress the tarfile with (none, bzip2, xz, lzma, zstd, gzip)
+    /// The compression algorithm to compress the tarfile with (none, bzip2, zstd, gzip)
     compression: TarCompression,
 }
 
