@@ -7,7 +7,7 @@ edition = "2021"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 anyhow = "1"
-tokio = { version = "1.36", features = ["rt-multi-thread", "macros", "fs", "sync"]}
+tokio = { version = "1.37", features = ["rt-multi-thread", "macros", "fs", "sync"]}
 reqwest = { version = "0.12" }
 scraper = "0.19"
 tokio-tar = "0.3.1"
